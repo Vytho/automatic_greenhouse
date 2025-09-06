@@ -1,0 +1,2 @@
+link to book about micropython and raspberry pi:
+	https://datasheets.raspberrypi.com/pico/raspberry-pi-pico-python-sdk.pdf
