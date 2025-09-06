@@ -1,0 +1,5 @@
+# Ignore VS Code folders
+.vscode/
+
+# Ignore micropico files
+.micropico
