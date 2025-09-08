@@ -1,7 +1,10 @@
 from display_init import SSD1306_I2C
 import machine
 import time
+from machine import Pin
 
+
+#  _________This is used fro lcd display DO NOT REMOVE_________
 # ---------- Konfigurácia I2C ----------
 # Použijeme I2C(0) so SDA=GP0, SCL=GP1
 i2c = machine.I2C(0, sda=machine.Pin(0), scl=machine.Pin(1), freq=400000)
@@ -41,6 +44,47 @@ else:
     # time.sleep(0.5)
     # oled.text("Spusteny main.py", 0, 28)
     # oled.show()
+# _______________________________________________________________
+
+
+# Define buttons (assuming pulled-up, so pressed = LOW)
+btn_water = Pin(14, Pin.IN, Pin.PULL_UP)   # button 1 – manual watering
+btn_display = Pin(15, Pin.IN, Pin.PULL_UP) # button 2 – display + lights
+btn_mode = Pin(16, Pin.IN, Pin.PULL_UP)    # button 3 – change light mode
+
+# States
+display_on = False
+lights_on = False
+party_mode = False
+
+while True:
+    # Button 1: manual watering
+    if not btn_water.value():   # pressed
+        print("watering")
+        time.sleep(0.3)  # debounce
+
+    # Button 2: toggle display + lights
+    if not btn_display.value():   # pressed
+        display_on = not display_on
+        lights_on = display_on
+        if display_on:
+            print("display is on")
+            print("lights are turned on")
+        else:
+            print("display is off")
+            print("lights are turned off")
+        time.sleep(0.3)  # debounce
+
+    # Button 3: change light mode
+    if not btn_mode.value() and lights_on:   # pressed
+        party_mode = not party_mode
+        if party_mode:
+            print("party mode")
+        else:
+            print("normal mode")
+        time.sleep(0.3)  # debounce
+
+    time.sleep(0.05)  # main loop delay
 
 
 
