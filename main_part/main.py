@@ -7,60 +7,11 @@ from machine import Pin
 
 
 # ---------------------------------------
-# TIME CONFIGURATION
+# I2C DISPLAY CONFIGURATION
 # ---------------------------------------
-    # If program fails to connect to network, or NTP can't
-    # be accesed, program continues with warning and log messages
-    # and other data do not have timestamp. ( controlled with DATE_IS_SET 
-    # variable )
-
-DATE_IS_SET = False
-
-# Connect to Wi-Fi
-wlan = network.WLAN(network.STA_IF)
-wlan.active(True)
-wlan.connect("name", "password")
-
-# Add timeout to make it more robust
-timeout = 15
-while not wlan.isconnected() and timeout > 0:
-    time.sleep(1)
-    timeout -= 1
-
-if wlan.isconnected():
-    try:
-        ntptime.settime()
-        DATE_IS_SET = True
-    except:
-        # create log message
-        print("Could not get time from NTP")
-else:
-    # create log message
-    print("Wi-Fi not connected, using default time")
-
-# !!!!! custom localtime() funtion has to be written because of timezones !!!!
-rtc = machine.RTC()
-
-
-
-# ---------------------------------------
-# BUTTONS CONFIGURATION
-# ---------------------------------------
-    # assuming pulled-up, so pressed = LOW
-    # button 1 – manual watering --> GP0
-    # button 2 – display + lights --> GP1
-    # button 3 – change light mode --> GP2
-BTN_WATER = Pin(0, Pin.IN, Pin.PULL_UP)
-BTN_DISPLAY = Pin(1, Pin.IN, Pin.PULL_UP)
-BTN_MODE = Pin(2, Pin.IN, Pin.PULL_UP) 
-
-
-# ---------------------------------------
-# I2C CONFIGURATION
-# ---------------------------------------
-    # SDA --> GP3
-    # SCL --> GP4
-i2c = machine.I2C(0, sda=machine.Pin(3), scl=machine.Pin(4), freq=400000)
+    # SDA --> GP0
+    # SCL --> GP1
+i2c = machine.I2C(0, sda=machine.Pin(0), scl=machine.Pin(1), freq=400000)
 
 # address scan - just for debugging now, later will be removed
 print("I2C scan:", i2c.scan())
@@ -77,6 +28,81 @@ else:
     addr = addrs[0]
     # create SSD1306 instance (128x64) 
     oled = SSD1306_I2C(128, 64, i2c, addr=addr)
+
+
+# Initial info on display
+oled.fill(0)
+oled.text("POWER:   ON", 0, 16)
+oled.text("Wi-Fi:     ", 0, 32)
+oled.show()
+
+
+
+
+# ---------------------------------------
+# TIME CONFIGURATION
+# ---------------------------------------
+    # If program fails to connect to network, or NTP can't
+    # be accesed, program continues with warning and log messages
+    # and other data do not have timestamp. ( controlled with DATE_IS_SET 
+    # variable )
+
+DATE_IS_SET = False
+
+# Connect to Wi-Fi
+wlan = network.WLAN(network.STA_IF)
+wlan.active(True)
+wlan.connect("name", "password")
+
+oled.fill_rect(0, 32, 128, 8, 0)  # clear Wi-Fi line
+oled.text("Wi-Fi:", 0, 32)
+oled.show()
+
+# Simple animation while waiting for Wi-Fi
+dots = ["", ".", "..", "..."]
+dot_index = 0
+timeout = 15
+
+while not wlan.isconnected() and timeout > 0:
+    oled.fill_rect(70, 32, 80, 8, 0)  # clear old dots
+    oled.text(dots[dot_index], 68, 32)
+    oled.show()
+    dot_index = (dot_index + 1) % len(dots)
+    time.sleep(0.5)
+    timeout -= 1
+
+# Final status
+oled.fill_rect(70, 32, 80, 8, 0)  # clear animation
+if wlan.isconnected():
+    oled.text("ON", 72, 32)
+    oled.show()
+    try:
+        ntptime.settime()
+        DATE_IS_SET = True
+    except:
+        print("Could not get time from NTP")
+else:
+    oled.text("ERR", 72, 32)
+    oled.show()
+    print("Wi-Fi not connected, using default time")
+
+
+# !!!!! custom localtime() funtion has to be written because of timezones !!!!
+rtc = machine.RTC()
+
+
+
+# ---------------------------------------
+# BUTTONS CONFIGURATION
+# ---------------------------------------
+    # assuming pulled-up, so pressed = LOW
+    # button 1 – manual watering --> GP0
+    # button 2 – display + lights --> GP1
+    # button 3 – change light mode --> GP2
+# BTN_WATER = Pin(0, Pin.IN, Pin.PULL_UP)
+# BTN_DISPLAY = Pin(1, Pin.IN, Pin.PULL_UP)
+# BTN_MODE = Pin(2, Pin.IN, Pin.PULL_UP) 
+
 
 
 
@@ -97,46 +123,52 @@ else:
 
 
 # States
-display_on = False
-lights_on = False
-party_mode = False
+# display_on = False
+# lights_on = False
+# party_mode = False
+# last_time = time.time()
+# DATA_INTERVAL = 600  # used to set interval for data measurement
 
-while True:
+# while True:
+
+#     # Read data from sensors every 10 minutes
+#     curr_time = time.time()
+#     if curr_time - last_time >= DATA_INTERVAL:
+#         print("read and write data")
+#         last_time = curr_time
 
 
 
+#     # Button 1: manual watering
+#     if not BTN_WATER.value():   # pressed
+#         print("watering")
+#         time.sleep(0.3)  # debounce
 
+#     # Button 2: toggle display + lights
+#     if not BTN_DISPLAY.value():   # pressed
+#         display_on = not display_on
+#         lights_on = display_on
+#         if display_on:
+#             print("display is on")
+#             print("lights are turned on")
+#         else:
+#             print("display is off")
+#             print("lights are turned off")
+#             # clear the display
+#             oled.fill(0)
+#             oled.show()
+#         time.sleep(0.3)  # debounce
 
-    # Button 1: manual watering
-    if not BTN_WATER.value():   # pressed
-        print("watering")
-        time.sleep(0.3)  # debounce
+#     # Button 3: change light mode
+#     if not BTN_MODE.value() and lights_on:   # pressed
+#         party_mode = not party_mode
+#         if party_mode:
+#             print("party mode")
+#         else:
+#             print("normal mode")
+#         time.sleep(0.3)  # debounce
 
-    # Button 2: toggle display + lights
-    if not BTN_DISPLAY.value():   # pressed
-        display_on = not display_on
-        lights_on = display_on
-        if display_on:
-            print("display is on")
-            print("lights are turned on")
-        else:
-            print("display is off")
-            print("lights are turned off")
-            # clear the display
-            oled.fill(0)
-            oled.show()
-        time.sleep(0.3)  # debounce
-
-    # Button 3: change light mode
-    if not BTN_MODE.value() and lights_on:   # pressed
-        party_mode = not party_mode
-        if party_mode:
-            print("party mode")
-        else:
-            print("normal mode")
-        time.sleep(0.3)  # debounce
-
-    time.sleep(0.05)  # main loop delay
+#     time.sleep(0.05)  # main loop delay
 
 
 
