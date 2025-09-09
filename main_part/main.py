@@ -7,15 +7,16 @@ from machine import Pin
 import dht
 
 
+#####################################
+# ----------CONFIGURATION -----------
+#####################################
+
 # ---------------------------------------
-# I2C DISPLAY CONFIGURATION
+# I2C DISPLAY
 # ---------------------------------------
     # SDA --> GP0
     # SCL --> GP1
 i2c = machine.I2C(0, sda=machine.Pin(0), scl=machine.Pin(1), freq=400000)
-
-# address scan - just for debugging now, later will be removed
-print("I2C scan:", i2c.scan())
 
 # scan the address
 addrs = i2c.scan()
@@ -24,10 +25,9 @@ if not addrs:
     # will be used as log message ( could be handled by single function to make it
     # easier to include error time )
     print("Display can't be connected. Check address or wiring.")
-    # someErrorHandler(code_of_error)
 else:
+    # Use first address and create SSD1306 instance (128x64) 
     addr = addrs[0]
-    # create SSD1306 instance (128x64) 
     oled = SSD1306_I2C(128, 64, i2c, addr=addr)
 
 
@@ -41,23 +41,23 @@ oled.show()
 
 
 # ---------------------------------------
-# TIME CONFIGURATION
+# TIME AND WI-FI
 # ---------------------------------------
     # If program fails to connect to network, or NTP can't
     # be accesed, program continues with warning and log messages
     # and other data do not have timestamp. ( controlled with DATE_IS_SET 
     # variable )
+DATE_IS_SET = False             # Check, if timestamps can be created
+DOTS = ["", ".", "..", "..."]
+TIMEOUT = 15                    # How long to wait before proceeding without Wi-Fi connection
+dot_index = 0
+
 
 # Make login to wi-fi secure, so that you can push to github ;)
 with open("password.txt", "r") as file:
     NAME = file.readline().strip()
     PASSWORD = file.readline().strip()
 
-print(NAME)
-print(PASSWORD)
-
-
-DATE_IS_SET = False
 
 # Connect to Wi-Fi
 wlan = network.WLAN(network.STA_IF)
@@ -68,18 +68,15 @@ oled.fill_rect(0, 32, 128, 8, 0)  # clear Wi-Fi line
 oled.text("Wi-Fi:", 0, 32)
 oled.show()
 
-# Simple animation while waiting for Wi-Fi
-dots = ["", ".", "..", "..."]
-dot_index = 0
-timeout = 15
 
-while not wlan.isconnected() and timeout > 0:
+
+while not wlan.isconnected() and TIMEOUT > 0:
     oled.fill_rect(70, 32, 80, 8, 0)  # clear old dots
-    oled.text(dots[dot_index], 68, 32)
+    oled.text(DOTS[dot_index], 68, 32)
     oled.show()
-    dot_index = (dot_index + 1) % len(dots)
+    dot_index = (dot_index + 1) % len(DOTS)
     time.sleep(0.5)
-    timeout -= 1
+    TIMEOUT -= 1
 
 # Final status
 oled.fill_rect(70, 32, 80, 8, 0)  # clear animation
@@ -97,38 +94,29 @@ else:
     print("Wi-Fi not connected, using default time")
 
 
-
 rtc = machine.RTC()
 
 
-
 # ---------------------------------------
-# BUTTONS CONFIGURATION
+# BUTTONS
 # ---------------------------------------
     # assuming pulled-up, so pressed = LOW
-    # button 1 – manual watering --> GP0
-    # button 2 – display + lights --> GP1
-    # button 3 – change light mode --> GP2
+    # button 1 – manual watering --> GP6
+    # button 2 – display + lights --> GP7
+    # button 3 – change light mode --> GP8
 BTN_WATER = Pin(6, Pin.IN, Pin.PULL_UP)
 BTN_DISPLAY = Pin(7, Pin.IN, Pin.PULL_UP)
 BTN_MODE = Pin(8, Pin.IN, Pin.PULL_UP) 
 
-# ---------------------------------------
-# SENSORS CONFIGURATION
-# ---------------------------------------
-# DHT11
-dht11 = dht.DHT11(machine.Pin(9))
 
 # ---------------------------------------
-# PINS FOR PUMP
+# DHT11 / MOTOR DRIVER / RGB LED
 # ---------------------------------------
+dht11 = dht.DHT11(machine.Pin(9))
+
 motor_a = Pin(15, Pin.OUT)  # B-1A
 motor_b = Pin(14, Pin.OUT)  # B-1B
 
-
-# ---------------------------------------
-# PINS FOR RGB LED
-# ---------------------------------------
 led_r = Pin(18, Pin.OUT)
 led_g = Pin(19, Pin.OUT)
 led_b = Pin(20, Pin.OUT)
@@ -136,9 +124,9 @@ led_b = Pin(20, Pin.OUT)
 
 
 
-# ---------------------------------------
-# HELPER FUNCTIONS
-# ---------------------------------------
+#####################################
+# --------HELPER FUNCTIONS ----------
+#####################################
 
 def last_sunday(year, month):
     """Return day of month for last Sunday in given month/year"""
@@ -257,7 +245,9 @@ last_water_ms = 0
 last_display_ms = 0
 last_mode_ms = 0
 
-# ---------------- MAIN STATE ----------------
+#####################################
+# -----------MAIN LOOP --------------
+#####################################
 display_on = False
 lights_on = False
 party_mode = False
