@@ -4,6 +4,7 @@ import time
 import ntptime
 import network
 from machine import Pin
+import dht
 
 
 # ---------------------------------------
@@ -99,12 +100,15 @@ rtc = machine.RTC()
     # button 1 – manual watering --> GP0
     # button 2 – display + lights --> GP1
     # button 3 – change light mode --> GP2
-# BTN_WATER = Pin(0, Pin.IN, Pin.PULL_UP)
-# BTN_DISPLAY = Pin(1, Pin.IN, Pin.PULL_UP)
-# BTN_MODE = Pin(2, Pin.IN, Pin.PULL_UP) 
+BTN_WATER = Pin(2, Pin.IN, Pin.PULL_UP)
+BTN_DISPLAY = Pin(3, Pin.IN, Pin.PULL_UP)
+BTN_MODE = Pin(4, Pin.IN, Pin.PULL_UP) 
 
-
-
+# ---------------------------------------
+# SENSORS CONFIGURATION
+# ---------------------------------------
+# DHT11
+dht11 = dht.DHT11(machine.Pin(5))
 
 
 # ---------------------------------------
@@ -112,7 +116,22 @@ rtc = machine.RTC()
 # ---------------------------------------
 
 
+def writeToData(tem, hum, timestamp, is_valid):
+    with open("data_test.txt", "a") as file:
+        if is_valid:
+            file.write(f"{timestamp[0]}-{timestamp[1]}-{timestamp[2]} {timestamp[3]}:{timestamp[4]}:{timestamp[5]},{tem},{hum}\n")
+        else:
+            file.write(f"-,{tem},{hum}\n")
 
+
+
+def readDataFromSensors(is_valid):
+    # read from dht11 sensor
+    dht11.measure()
+    tem =dht11.temperature()
+    hum = dht11.humidity()
+    timestamp = time.localtime()
+    writeToData(tem, hum, timestamp, is_valid)
 
 
 
@@ -123,52 +142,54 @@ rtc = machine.RTC()
 
 
 # States
-# display_on = False
-# lights_on = False
-# party_mode = False
-# last_time = time.time()
-# DATA_INTERVAL = 600  # used to set interval for data measurement
+display_on = False
+lights_on = False
+party_mode = False
+last_time = time.time()
+DATA_INTERVAL = 600  # used to set interval for data measurement
 
-# while True:
+while True:
 
-#     # Read data from sensors every 10 minutes
-#     curr_time = time.time()
-#     if curr_time - last_time >= DATA_INTERVAL:
-#         print("read and write data")
-#         last_time = curr_time
+    # Read data from sensors every 10 minutes
+    curr_time = time.time()
+    if curr_time - last_time >= DATA_INTERVAL:
+        readDataFromSensors(DATE_IS_SET)
+        last_time = curr_time
 
 
 
-#     # Button 1: manual watering
-#     if not BTN_WATER.value():   # pressed
-#         print("watering")
-#         time.sleep(0.3)  # debounce
 
-#     # Button 2: toggle display + lights
-#     if not BTN_DISPLAY.value():   # pressed
-#         display_on = not display_on
-#         lights_on = display_on
-#         if display_on:
-#             print("display is on")
-#             print("lights are turned on")
-#         else:
-#             print("display is off")
-#             print("lights are turned off")
-#             # clear the display
-#             oled.fill(0)
-#             oled.show()
-#         time.sleep(0.3)  # debounce
 
-#     # Button 3: change light mode
-#     if not BTN_MODE.value() and lights_on:   # pressed
-#         party_mode = not party_mode
-#         if party_mode:
-#             print("party mode")
-#         else:
-#             print("normal mode")
-#         time.sleep(0.3)  # debounce
+    # Button 1: manual watering
+    if not BTN_WATER.value():   # pressed
+        print("watering")
+        time.sleep(0.3)  # debounce
 
-#     time.sleep(0.05)  # main loop delay
+    # Button 2: toggle display + lights
+    if not BTN_DISPLAY.value():   # pressed
+        display_on = not display_on
+        lights_on = display_on
+        if display_on:
+            print("display is on")
+            print("lights are turned on")
+        else:
+            print("display is off")
+            print("lights are turned off")
+            # clear the display
+            oled.fill(0)
+            oled.show()
+        time.sleep(0.3)  # debounce
+
+    # Button 3: change light mode
+    if not BTN_MODE.value() and lights_on:   # pressed
+        party_mode = not party_mode
+        if party_mode:
+            print("party mode")
+        else:
+            print("normal mode")
+        time.sleep(0.3)  # debounce
+
+    time.sleep(0.05)  # main loop delay
 
 
 
