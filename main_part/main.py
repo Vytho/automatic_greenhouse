@@ -97,7 +97,7 @@ else:
     print("Wi-Fi not connected, using default time")
 
 
-# !!!!! custom localtime() funtion has to be written because of timezones !!!!
+
 rtc = machine.RTC()
 
 
