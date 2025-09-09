@@ -53,6 +53,8 @@ with open("password.txt", "r") as file:
     NAME = file.readline().strip()
     PASSWORD = file.readline().strip()
 
+print(NAME)
+print(PASSWORD)
 
 
 DATE_IS_SET = False
@@ -138,6 +140,48 @@ led_b = Pin(20, Pin.OUT)
 # HELPER FUNCTIONS
 # ---------------------------------------
 
+def last_sunday(year, month):
+    """Return day of month for last Sunday in given month/year"""
+    # Go to the first day of next month
+    if month == 12:
+        next_month = (year + 1, 1, 1, 0, 0, 0, 0, 0)
+    else:
+        next_month = (year, month + 1, 1, 0, 0, 0, 0, 0)
+    ts = time.mktime(next_month)
+    ts -= 24 * 3600  # step back one day
+    while time.localtime(ts)[6] != 6:  # 6 = Sunday
+        ts -= 24 * 3600
+    return time.localtime(ts)[2]
+
+def is_dst_eu(year, month, day, hour):
+    """Check if given UTC time is in EU DST period (Slovakia included)"""
+    dst_start = last_sunday(year, 3)   # March
+    dst_end   = last_sunday(year, 10)  # October
+
+    if 3 < month < 10:
+        return True
+    if month < 3 or month > 10:
+        return False
+    if month == 3:
+        if day > dst_start or (day == dst_start and hour >= 2):
+            return True
+    if month == 10:
+        if day < dst_end or (day == dst_end and hour < 3):
+            return True
+    return False
+
+def changeByTimezone(utc_tuple):
+    """Convert UTC tuple to Slovakia localtime (CET/CEST)"""
+    year, month, day, hour, minute, second, wday, yday = utc_tuple
+    offset = 3600  # CET = UTC+1
+    if is_dst_eu(year, month, day, hour):
+        offset = 7200  # CEST = UTC+2
+    return time.localtime(time.mktime(utc_tuple) + offset)
+
+
+
+
+
 def writeToData(tem, hum, timestamp, is_valid):
     with open("data_test.txt", "a") as file:
         if is_valid:
@@ -151,6 +195,7 @@ def readDataFromSensors(is_valid):
     tem =dht11.temperature()
     hum = dht11.humidity()
     timestamp = time.localtime()
+    timestamp = changeByTimezone(timestamp)
     writeToData(tem, hum, timestamp, is_valid)
 
 # Non-blocking pump control
@@ -224,6 +269,9 @@ WATERING_TIME = 5  # seconds
 time.sleep(2)
 oled.fill(0)
 oled.show()
+
+
+print(changeByTimezone(time.localtime()))
 
 while True:
     now_ms = time.ticks_ms()
