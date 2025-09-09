@@ -1,5 +1,0 @@
-link to book about micropython and raspberry pi ( not very good ):
-	https://datasheets.raspberrypi.com/pico/raspberry-pi-pico-python-sdk.pdf
-
-micropython documentation:
-	https://docs.micropython.org/en/latest/
