@@ -8,3 +8,5 @@
 # files used to test data storage before making version that stores them in cloud
 **/log_test.txt
 **/data_test.txt
+
+**/password.txt

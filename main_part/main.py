@@ -48,12 +48,19 @@ oled.show()
     # and other data do not have timestamp. ( controlled with DATE_IS_SET 
     # variable )
 
+# Make login to wi-fi secure, so that you can push to github ;)
+with open("password.txt", "r") as file:
+    NAME = file.readline().strip()
+    PASSWORD = file.readline().strip()
+
+
+
 DATE_IS_SET = False
 
 # Connect to Wi-Fi
 wlan = network.WLAN(network.STA_IF)
 wlan.active(True)
-wlan.connect("name", "password")
+wlan.connect(NAME, PASSWORD)
 
 oled.fill_rect(0, 32, 128, 8, 0)  # clear Wi-Fi line
 oled.text("Wi-Fi:", 0, 32)
