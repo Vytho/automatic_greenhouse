@@ -31,7 +31,7 @@ else:
     oled = SSD1306_I2C(128, 64, i2c, addr=addr)
 
 
-# Initial info on display
+# Initial info on display when turned on
 oled.fill(0)
 oled.text("POWER:   ON", 0, 16)
 oled.text("Wi-Fi:     ", 0, 32)
@@ -100,21 +100,36 @@ rtc = machine.RTC()
     # button 1 – manual watering --> GP0
     # button 2 – display + lights --> GP1
     # button 3 – change light mode --> GP2
-BTN_WATER = Pin(2, Pin.IN, Pin.PULL_UP)
-BTN_DISPLAY = Pin(3, Pin.IN, Pin.PULL_UP)
-BTN_MODE = Pin(4, Pin.IN, Pin.PULL_UP) 
+BTN_WATER = Pin(6, Pin.IN, Pin.PULL_UP)
+BTN_DISPLAY = Pin(7, Pin.IN, Pin.PULL_UP)
+BTN_MODE = Pin(8, Pin.IN, Pin.PULL_UP) 
 
 # ---------------------------------------
 # SENSORS CONFIGURATION
 # ---------------------------------------
 # DHT11
-dht11 = dht.DHT11(machine.Pin(5))
+dht11 = dht.DHT11(machine.Pin(9))
+
+# ---------------------------------------
+# PINS FOR PUMP
+# ---------------------------------------
+motor_a = Pin(15, Pin.OUT)  # B-1A
+motor_b = Pin(14, Pin.OUT)  # B-1B
+
+
+# ---------------------------------------
+# PINS FOR RGB LED
+# ---------------------------------------
+led_r = Pin(18, Pin.OUT)
+led_g = Pin(19, Pin.OUT)
+led_b = Pin(20, Pin.OUT)
+
+
 
 
 # ---------------------------------------
 # HELPER FUNCTIONS
 # ---------------------------------------
-
 
 def writeToData(tem, hum, timestamp, is_valid):
     with open("data_test.txt", "a") as file:
@@ -122,8 +137,6 @@ def writeToData(tem, hum, timestamp, is_valid):
             file.write(f"{timestamp[0]}-{timestamp[1]}-{timestamp[2]} {timestamp[3]}:{timestamp[4]}:{timestamp[5]},{tem},{hum}\n")
         else:
             file.write(f"-,{tem},{hum}\n")
-
-
 
 def readDataFromSensors(is_valid):
     # read from dht11 sensor
@@ -133,89 +146,148 @@ def readDataFromSensors(is_valid):
     timestamp = time.localtime()
     writeToData(tem, hum, timestamp, is_valid)
 
+# Non-blocking pump control
+pump_running = False
+pump_end_ms = 0
 
+def start_pump(seconds):
+    global pump_running, pump_end_ms
+    motor_a.value(1)
+    motor_b.value(0)
+    pump_running = True
+    pump_end_ms = time.ticks_add(time.ticks_ms(), int(seconds * 1000))
+    print("pump started")
 
+def stop_pump():
+    global pump_running
+    motor_a.value(0)
+    motor_b.value(0)
+    pump_running = False
+    print("pump stopped")
 
-# ---------------------------------------
-# MAIN LOOP
-# ---------------------------------------
+# LED helpers (stateless outputs)
+def led_off():
+    led_r.value(0)
+    led_g.value(0)
+    led_b.value(0)
 
+def led_normal():
+    led_r.value(1)
+    led_g.value(1)
+    led_b.value(1)
 
-# States
+# Non-blocking party mode (stepper)
+party_step = 0
+last_led_change_ms = time.ticks_ms()
+LED_INTERVAL_MS = 200
+
+def led_party_step():
+    global party_step, last_led_change_ms
+    now = time.ticks_ms()
+    if time.ticks_diff(now, last_led_change_ms) >= LED_INTERVAL_MS:
+        last_led_change_ms = now
+        # cycle: R -> G -> B
+        if party_step == 0:
+            led_r.value(1); led_g.value(0); led_b.value(0)
+        elif party_step == 1:
+            led_r.value(0); led_g.value(1); led_b.value(0)
+        elif party_step == 2:
+            led_r.value(0); led_g.value(0); led_b.value(1)
+        party_step = (party_step + 1) % 3
+
+# ---------------- BUTTON EDGE + DEBOUNCE ----------------
+# store previous states for falling-edge detection
+prev_water = BTN_WATER.value()
+prev_display = BTN_DISPLAY.value()
+prev_mode = BTN_MODE.value()
+DEBOUNCE_MS = 200
+last_water_ms = 0
+last_display_ms = 0
+last_mode_ms = 0
+
+# ---------------- MAIN STATE ----------------
 display_on = False
 lights_on = False
 party_mode = False
 last_time = time.time()
-DATA_INTERVAL = 600  # used to set interval for data measurement
+DATA_INTERVAL = 600
+WATERING_TIME = 5  # seconds
+
+# clear initial info after short wait
+time.sleep(2)
+oled.fill(0)
+oled.show()
 
 while True:
+    now_ms = time.ticks_ms()
 
-    # Read data from sensors every 10 minutes
+    # ---------------- update pump (non-blocking) ----------------
+    if pump_running and time.ticks_diff(now_ms, pump_end_ms) >= 0:
+        stop_pump()
+
+    # ---------------- handle display ----------------
+    if display_on:
+        try:
+            dht11.measure()
+            tem = dht11.temperature()
+            hum = dht11.humidity()
+            oled.fill(0)
+            oled.text("Temp: {} C".format(tem), 0, 16)
+            oled.text("Hum:  {} %".format(hum), 0, 32)
+            oled.show()
+        except:
+            continue
+        #     oled.fill(0)
+        #     oled.text("Sensor ERR", 0, 24)
+        #     oled.show()
+
+    # ---------------- LED behavior (non-blocking) ----------------
+    if lights_on:
+        if party_mode:
+            led_party_step()   # non-blocking periodic step
+        else:
+            led_normal()
+    else:
+        led_off()
+
+    # ---------------- periodic sensor logging ----------------
     curr_time = time.time()
     if curr_time - last_time >= DATA_INTERVAL:
         readDataFromSensors(DATE_IS_SET)
         last_time = curr_time
 
+    # ---------------- read buttons with falling-edge + debounce ----------------
+    cur_water = BTN_WATER.value()
+    if prev_water == 1 and cur_water == 0:
+        if time.ticks_diff(now_ms, last_water_ms) > DEBOUNCE_MS:
+            # start pump (non-blocking)
+            start_pump(WATERING_TIME)
+            last_water_ms = now_ms
+    prev_water = cur_water
 
+    cur_display = BTN_DISPLAY.value()
+    if prev_display == 1 and cur_display == 0:
+        if time.ticks_diff(now_ms, last_display_ms) > DEBOUNCE_MS:
+            display_on = not display_on
+            lights_on = display_on
+            if display_on:
+                print("display is on; lights on")
+            else:
+                print("display is off; lights off")
+                oled.fill(0)
+                oled.show()
+            last_display_ms = now_ms
+    prev_display = cur_display
 
+    cur_mode = BTN_MODE.value()
+    if prev_mode == 1 and cur_mode == 0:
+        if time.ticks_diff(now_ms, last_mode_ms) > DEBOUNCE_MS:
+            # toggle mode only if lights are on (same behavior as original)
+            if lights_on:
+                party_mode = not party_mode
+                print("party mode" if party_mode else "normal mode")
+            last_mode_ms = now_ms
+    prev_mode = cur_mode
 
-
-    # Button 1: manual watering
-    if not BTN_WATER.value():   # pressed
-        print("watering")
-        time.sleep(0.3)  # debounce
-
-    # Button 2: toggle display + lights
-    if not BTN_DISPLAY.value():   # pressed
-        display_on = not display_on
-        lights_on = display_on
-        if display_on:
-            print("display is on")
-            print("lights are turned on")
-        else:
-            print("display is off")
-            print("lights are turned off")
-            # clear the display
-            oled.fill(0)
-            oled.show()
-        time.sleep(0.3)  # debounce
-
-    # Button 3: change light mode
-    if not BTN_MODE.value() and lights_on:   # pressed
-        party_mode = not party_mode
-        if party_mode:
-            print("party mode")
-        else:
-            print("normal mode")
-        time.sleep(0.3)  # debounce
-
-    time.sleep(0.05)  # main loop delay
-
-
-
-
-
-
-    # # vyčisti displej
-    # oled.fill(0)
-
-    # # jednoduchý nápis
-    # oled.text("Ahoj, Pico W!", 0, 0)
-    # oled.text("OLED 128x64 (I2C)", 0, 16)
-    # oled.text("Toto je test.", 0, 32)
-
-    # # môžeme nakresliť rámček
-    # oled.rect(0, 0, 128, 64, 1)
-
-    # oled.show()
-
-    # # alternatívne bliknutie
-    # time.sleep(2)
-    # oled.fill(0)
-    # oled.show()
-    # time.sleep(0.5)
-    # oled.text("Spusteny main.py", 0, 28)
-    # oled.show()
-# _______________________________________________________________
-
-
+    # small main loop delay (keeps responsiveness and reduces CPU)
+    time.sleep(0.02)
