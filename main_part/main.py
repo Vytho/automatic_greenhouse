@@ -174,17 +174,22 @@ def writeToData(tem, hum, timestamp, is_valid):
     with open("data_test.txt", "a") as file:
         if is_valid:
             file.write(f"{timestamp[0]}-{timestamp[1]}-{timestamp[2]} {timestamp[3]}:{timestamp[4]}:{timestamp[5]},{tem},{hum}\n")
+            print("data written")
         else:
             file.write(f"-,{tem},{hum}\n")
+            print("data written, date not found")
 
 def readDataFromSensors(is_valid):
-    # read from dht11 sensor
-    dht11.measure()
-    tem =dht11.temperature()
-    hum = dht11.humidity()
-    timestamp = time.localtime()
-    timestamp = changeByTimezone(timestamp)
-    writeToData(tem, hum, timestamp, is_valid)
+    try:
+        # read from dht11 sensor
+        dht11.measure()
+        tem = dht11.temperature()
+        hum = dht11.humidity()
+        timestamp = time.localtime()
+        timestamp = changeByTimezone(timestamp)
+        writeToData(tem, hum, timestamp, is_valid)
+    except:
+        print("ERROR loading data from DHT in 'readDataFromSensors'")
 
 # Non-blocking pump control
 pump_running = False
@@ -252,7 +257,7 @@ display_on = False
 lights_on = False
 party_mode = False
 last_time = time.time()
-DATA_INTERVAL = 600
+DATA_INTERVAL = 5  # seconds
 WATERING_TIME = 5  # seconds
 
 # clear initial info after short wait
