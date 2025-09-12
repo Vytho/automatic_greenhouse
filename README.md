@@ -1,8 +1,8 @@
-# 🌱 MicroPython Smart Watering System 💧
+# 🌱 MicroPython Smart Watering System 
 
 **Short description**
 
-A compact MicroPython project for a plant-watering controller running on a Raspberry Pi Pico (or similar board). It reads a DHT11 sensor, logs temperature/humidity to `data_test.txt`, shows status on an SSD1306 I2C OLED, controls a water pump (motor driver), and drives RGB LEDs and buttons for user interaction (display toggle, party mode, manual watering). 🚀
+A compact MicroPython project for a plant-watering controller running on a Raspberry Pi Pico W. It reads a DHT11 sensor, logs temperature/humidity to `data.txt`, shows status on an SSD1306 I2C OLED, controls a water pump (motor driver), and drives RGB LEDs and buttons for user interaction (display toggle, party mode, manual watering). 🚀
 
 ---
 
@@ -11,9 +11,9 @@ A compact MicroPython project for a plant-watering controller running on a Raspb
 * I2C OLED status display (SSD1306) 🖥️
 * Wi‑Fi connection and NTP time sync (if available) 📶⏰
 * Local timezone conversion (CET/CEST) with DST handling for EU 🌍🕒
-* Periodic logging of DHT11 sensor data to `data_test.txt` 🌡️💧
+* Periodic logging of DHT11 sensor data to `data.txt` 🌡️💧
 * Manual non‑blocking pump control (start/stop via button) 🚿🔁
-* RGB LED normal & party modes (party mode = 🎉)
+* RGB LED normal & party modes
 * Button debounce and falling-edge detection 🎛️
 
 ---
@@ -77,7 +77,7 @@ The code will read the first two lines as Wi‑Fi name and password. If there is
 
 ## 🗂️ Files produced / data format
 
-* `data_test.txt` — appended lines with either full timestamp or `-` if time isn't set.
+* `data.txt` — appended lines with either full timestamp or `-` if time isn't set.
 
 If timestamp available:
 
@@ -106,9 +106,9 @@ If timestamp not available:
 
 ## 🧮 Important constants (in code)
 
-* `DATA_INTERVAL` — how often sensor data is logged (seconds). Default: `5`.
-* `WATERING_TIME` — how long the pump runs when manually triggered (seconds). Default: `5`.
-* `TIMEOUT` — seconds to wait for Wi‑Fi connection before continuing without it. Default: `15`.
+* `DATA_INTERVAL` — how often sensor data is logged (seconds). Default: `600`.
+* `WATERING_TIME` — how long the pump runs when manually triggered (seconds). Default: `10`.
+* `TIMEOUT` — seconds to wait for Wi‑Fi connection before continuing without it. Default: `20`.
 
 Adjust these in the source to fit your needs.
 
@@ -130,9 +130,9 @@ Adjust these in the source to fit your needs.
 
 ## 🔭 Extending the project / TODOs
 
-* Add scheduling for automatic watering (time-of-day or soil-moisture input). 📆
+* Add 'automatic watering' feature ( using some time module would be ideal to avoid setting time everytime Pico is turned on ) 📆
 * Implement PWM-based brightness control for RGB LED. 🔆
-* Add web UI (for Pico W) to view sensor logs and manually trigger pump. 🌐
+* Add web UI (for Pico W) to view sensor logs and manually trigger pump. ( data can be uploaded to Google sheets )🌐
 * Persist configuration in a JSON file instead of `password.txt`. 🗃️
 * Improve error handling and add an LED/error codes for easier debugging. 🐞
 

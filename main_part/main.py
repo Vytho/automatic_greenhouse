@@ -49,7 +49,7 @@ oled.show()
     # variable )
 DATE_IS_SET = False             # Check, if timestamps can be created
 DOTS = ["", ".", "..", "..."]
-TIMEOUT = 15                    # How long to wait before proceeding without Wi-Fi connection
+TIMEOUT = 20                    # How long to wait before proceeding without Wi-Fi connection
 dot_index = 0
 
 
@@ -257,8 +257,8 @@ display_on = False
 lights_on = False
 party_mode = False
 last_time = time.time()
-DATA_INTERVAL = 5  # seconds
-WATERING_TIME = 5  # seconds
+DATA_INTERVAL = 600  # seconds
+WATERING_TIME = 10  # seconds
 
 # clear initial info after short wait
 time.sleep(2)
