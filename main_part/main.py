@@ -171,7 +171,7 @@ def changeByTimezone(utc_tuple):
 
 
 def writeToData(tem, hum, timestamp, is_valid):
-    with open("data_test.txt", "a") as file:
+    with open("data.txt", "a") as file:
         if is_valid:
             file.write(f"{timestamp[0]}-{timestamp[1]}-{timestamp[2]} {timestamp[3]}:{timestamp[4]}:{timestamp[5]},{tem},{hum}\n")
             print("data written")
